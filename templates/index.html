@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OSINT_RECON // Terminal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: #000000;
+            color: #00ff41;
+            margin: 0;
+            padding: 30px 20px;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+        body::before {
+            content: "";
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: repeating-linear-gradient(
+                0deg, rgba(0,255,65,0.03) 0px, rgba(0,255,65,0.03) 1px,
+                transparent 1px, transparent 3px
+            );
+            pointer-events: none; z-index: 999;
+        }
+        .terminal-header {
+            max-width: 800px; margin: 0 auto 20px auto;
+            border: 1px solid #00ff41; border-radius: 4px;
+            background: #050805;
+        }
+        .terminal-bar {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 12px; border-bottom: 1px solid #00ff41;
+            font-size: 12px; color: #6b9e6b;
+        }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+        .dot.red { background: #ff5f56; }
+        .dot.yellow { background: #ffbd2e; }
+        .dot.green { background: #27c93f; }
+        .terminal-title { margin-left: 10px; }
+        .terminal-body { padding: 18px 20px; }
+        h1 {
+            font-family: 'Share Tech Mono', monospace;
+            text-align: left; font-size: 26px; margin: 0 0 4px 0;
+            color: #00ff41; text-shadow: 0 0 8px rgba(0,255,65,0.6);
+        }
+        h1::before { content: "root@osint:~$ "; color: #6b9e6b; font-size: 16px; }
+        .subtitle { color: #6b9e6b; margin: 0 0 16px 0; font-size: 13px; }
+        .subtitle::before { content: "> "; }
+        .howto {
+            max-width: 800px; margin: 0 auto 18px auto;
+            border: 1px dashed #1f7a1f; border-radius: 4px;
+            background: rgba(0,255,65,0.03);
+            padding: 14px 18px; font-size: 12px; color: #6b9e6b; line-height: 1.6;
+        }
+        .howto b { color: #00ff41; }
+        .howto code { background: #0a1a0a; padding: 2px 6px; border-radius: 3px; color: #00ff41; }
+        .search-box { max-width: 800px; margin: 0 auto 18px auto; display: flex; }
+        .prompt-label {
+            display: flex; align-items: center; padding: 0 12px;
+            background: #0a1a0a; border: 1px solid #00ff41; border-right: none;
+            border-radius: 4px 0 0 4px; color: #00ff41; font-size: 14px; white-space: nowrap;
+        }
+        input {
+            flex: 1; padding: 13px 14px; border: 1px solid #00ff41; border-left: none; border-right: none;
+            background: #000; color: #00ff41; font-size: 15px;
+            font-family: 'JetBrains Mono', monospace; outline: none;
+        }
+        input::placeholder { color: #1f7a1f; }
+        input:focus { background: #050d05; }
+        button {
+            padding: 13px 22px; border-radius: 0 4px 4px 0; border: 1px solid #00ff41;
+            background: #00ff41; color: #000; font-size: 14px; font-weight: 700;
+            font-family: 'JetBrains Mono', monospace; cursor: pointer; letter-spacing: 1px;
+            transition: all 0.15s;
+        }
+        button:hover { background: #000; color: #00ff41; }
+        .summary {
+            max-width: 800px; margin: 0 auto 18px auto; display: none;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px;
+            background: #00ff41; border: 1px solid #00ff41;
+        }
+        .summary.active { display: grid; }
+        .summary-item { background: #000; text-align: center; padding: 12px 8px; }
+        .summary-item .label { font-size: 10px; color: #6b9e6b; text-transform: uppercase; letter-spacing: 1px; }
+        .summary-item .value { font-size: 14px; font-weight: 700; color: #00ff41; margin-top: 4px; word-break: break-word; }
+        .tabs { max-width: 800px; margin: 0 auto 18px auto; display: flex; gap: 0; flex-wrap: wrap; }
+        .tab {
+            padding: 10px 20px; background: #000; cursor: pointer;
+            border: 1px solid #1f7a1f; border-bottom: none; font-weight: 600; font-size: 13px;
+            color: #6b9e6b; transition: all 0.15s;
+        }
+        .tab:hover { color: #00ff41; border-color: #00ff41; }
+        .tab.active { background: #00ff41; color: #000; border-color: #00ff41; }
+        .panel {
+            display: none; max-width: 800px; margin: 0 auto;
+            background: #050805; padding: 20px; border: 1px solid #00ff41;
+        }
+        .panel.active { display: block; animation: flicker 0.3s ease; }
+        @keyframes flicker { from { opacity: 0.3; } to { opacity: 1; } }
+        .row {
+            padding: 9px 0; border-bottom: 1px solid #0d260d;
+            display: flex; justify-content: space-between; font-size: 13px;
+        }
+        .row:last-child { border-bottom: none; }
+        .row b { color: #6b9e6b; font-weight: 500; }
+        .row b::before { content: "[+] "; color: #1f7a1f; }
+        .row span { color: #00ff41; text-align: right; max-width: 60%; word-break: break-word; }
+        .badge {
+            display: inline-block; padding: 3px 12px; font-size: 11px; font-weight: 700;
+            border: 1px solid #00ff41; color: #00ff41; background: rgba(0,255,65,0.08);
+        }
+        .loading { text-align: center; color: #1f7a1f; padding: 24px; font-size: 13px; }
+        .cursor-blink {
+            display: inline-block; width: 8px; height: 14px; background: #00ff41;
+            animation: blink 1s step-end infinite; vertical-align: middle; margin-left: 4px;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+        .sub-list-wrap { max-height: 300px; overflow-y: auto; }
+        .sub-list-wrap::-webkit-scrollbar { width: 6px; }
+        .sub-list-wrap::-webkit-scrollbar-thumb { background: #1f7a1f; }
+        .sub-list-wrap .row span { text-align: left; max-width: 100%; }
+        .sub-list-wrap .row::before { content: ""; }
+        footer {
+            max-width: 800px; margin: 24px auto 0 auto; text-align: center;
+            font-size: 11px; color: #1f7a1f; padding-top: 14px; border-top: 1px dashed #1f7a1f;
+        }
+        footer::before { content: "[ "; }
+        footer::after { content: " ]"; }
+        @media (max-width: 600px) {
+            .summary { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="terminal-header">
+        <div class="terminal-bar">
+            <div class="dot red"></div><div class="dot yellow"></div><div class="dot green"></div>
+            <span class="terminal-title">osint_recon.sh — bash — 80x24</span>
+        </div>
+        <div class="terminal-body">
+            <h1>OSINT_RECON<span class="cursor-blink"></span></h1>
+            <p class="subtitle">passive reconnaissance module // whois · geoip · subdomain enum</p>
+        </div>
+    </div>
+
+    <div class="howto">
+        <b>[USAGE]</b> Enter a target domain (e.g. <code>example.com</code>) and execute search.
+        Returns WHOIS registration data, IP/hosting geolocation, and subdomains found via certificate transparency logs.
+        <br><br>
+        <b>[WARNING]</b> Authorized/passive OSINT only. Only search domains you own or are permitted to investigate. Rate-limited.
+    </div>
+
+    <div class="search-box">
+        <div class="prompt-label">target&gt;</div>
+        <input type="text" id="domain" placeholder="example.com" onkeydown="if(event.key==='Enter') lookup()">
+        <button onclick="lookup()">EXECUTE</button>
+    </div>
+
+    <div class="summary" id="summary"></div>
+
+    <div class="tabs">
+        <div class="tab active" onclick="showTab('whois', this)">[ WHOIS ]</div>
+        <div class="tab" onclick="showTab('ip', this)">[ IP_GEO ]</div>
+        <div class="tab" onclick="showTab('subs', this)">[ SUBDOMAINS ]</div>
+    </div>
+
+    <div id="whois" class="panel active"><p class="loading">&gt; awaiting target input...</p></div>
+    <div id="ip" class="panel"></div>
+    <div id="subs" class="panel"></div>
+
+    <footer>
+        educational use only · passive recon · no exploitation performed
+    </footer>
+
+    <script>
+        function showTab(name, el) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            el.classList.add('active');
+            document.getElementById(name).classList.add('active');
+        }
+
+        function loadingHtml(msg) {
+            return `<div class="loading">&gt; ${msg}<span class="cursor-blink"></span></div>`;
+        }
+
+        async function lookup() {
+            const domain = document.getElementById('domain').value.trim();
+            if (!domain) return alert('Enter a domain first');
+
+            document.getElementById('whois').innerHTML = loadingHtml('querying whois database...');
+            document.getElementById('ip').innerHTML = loadingHtml('resolving ip / geolocation...');
+            document.getElementById('subs').innerHTML = loadingHtml('querying certificate transparency logs...');
+            document.getElementById('summary').classList.remove('active');
+
+            let data;
+            try {
+                const res = await fetch('/lookup', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({domain: domain})
+                });
+                if (res.status === 429) {
+                    document.getElementById('whois').innerHTML = `<div class="loading">[ERROR] rate limit exceeded — retry in 60s</div>`;
+                    return;
+                }
+                data = await res.json();
+            } catch (e) {
+                document.getElementById('whois').innerHTML = `<div class="loading">[ERROR] connection failed: ${e}</div>`;
+                return;
+            }
+
+            const subCount = Array.isArray(data.subdomains) ? data.subdomains.length : 0;
+            const ip = data.ip_info && data.ip_info.ip ? data.ip_info.ip : '—';
+            const country = data.ip_info && data.ip_info.country ? data.ip_info.country : '—';
+            const registrar = data.whois && data.whois.registrar ? data.whois.registrar : '—';
+
+            document.getElementById('summary').innerHTML = `
+                <div class="summary-item"><div class="label">target</div><div class="value">${domain}</div></div>
+                <div class="summary-item"><div class="label">ip_addr</div><div class="value">${ip}</div></div>
+                <div class="summary-item"><div class="label">geo</div><div class="value">${country}</div></div>
+                <div class="summary-item"><div class="label">registrar</div><div class="value">${registrar}</div></div>
+                <div class="summary-item"><div class="label">subdomains</div><div class="value"><span class="badge">${subCount}</span></div></div>
+            `;
+            document.getElementById('summary').classList.add('active');
+
+            if (data.whois && data.whois.error) {
+                document.getElementById('whois').innerHTML = `<div class="loading">[!] no whois data (privacy protected or unavailable)</div>`;
+            } else {
+                let whoisHtml = '';
+                for (const [key, val] of Object.entries(data.whois)) {
+                    whoisHtml += `<div class="row"><b>${key.replace(/_/g,' ')}</b><span>${val}</span></div>`;
+                }
+                document.getElementById('whois').innerHTML = whoisHtml;
+            }
+
+            if (data.ip_info && data.ip_info.error) {
+                document.getElementById('ip').innerHTML = `<div class="loading">[!] could not resolve ip info</div>`;
+            } else {
+                let ipHtml = '';
+                for (const [key, val] of Object.entries(data.ip_info)) {
+                    ipHtml += `<div class="row"><b>${key.replace(/_/g,' ')}</b><span>${val}</span></div>`;
+                }
+                document.getElementById('ip').innerHTML = ipHtml;
+            }
+
+            if (!Array.isArray(data.subdomains) || data.subdomains.length === 0) {
+                document.getElementById('subs').innerHTML = `<div class="loading">[!] no subdomains found</div>`;
+            } else {
+                let subsHtml = `<div class="row"><b>total found</b><span class="badge">${data.subdomains.length}</span></div><div class="sub-list-wrap">`;
+                data.subdomains.forEach(s => subsHtml += `<div class="row"><span>&gt; ${s}</span></div>`);
+                subsHtml += `</div>`;
+                document.getElementById('subs').innerHTML = subsHtml;
+            }
+        }
+    </script>
+</body>
+</html>
