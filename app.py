@@ -67,15 +67,16 @@ def get_ip_info(domain):
 def get_subdomains(domain):
     try:
         url = f"https://crt.sh/?q=%25.{domain}&output=json"
-        res = requests.get(url, timeout=10).json()
+        res = requests.get(url, timeout=20)
+        res.raise_for_status()
+        data = res.json()
         subs = set()
-        for entry in res:
+        for entry in data:
             for name in entry.get("name_value", "").split("\n"):
                 subs.add(name.strip())
         return sorted(subs)
     except Exception as e:
-        return {"error": str(e)}
-
+        return {"error": f"crt.sh lookup failed: {str(e)}"}
 
 @app.route('/')
 def index():

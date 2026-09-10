@@ -246,14 +246,16 @@
                 document.getElementById('ip').innerHTML = ipHtml;
             }
 
-            if (!Array.isArray(data.subdomains) || data.subdomains.length === 0) {
-                document.getElementById('subs').innerHTML = `<div class="loading">[!] no subdomains found</div>`;
-            } else {
-                let subsHtml = `<div class="row"><b>total found</b><span class="badge">${data.subdomains.length}</span></div><div class="sub-list-wrap">`;
-                data.subdomains.forEach(s => subsHtml += `<div class="row"><span>&gt; ${s}</span></div>`);
-                subsHtml += `</div>`;
-                document.getElementById('subs').innerHTML = subsHtml;
-            }
+if (data.subdomains && data.subdomains.error) {
+    document.getElementById('subs').innerHTML = `<div class="loading">[!] ${data.subdomains.error}</div>`;
+} else if (!Array.isArray(data.subdomains) || data.subdomains.length === 0) {
+    document.getElementById('subs').innerHTML = `<div class="loading">[!] no subdomains found</div>`;
+} else {
+    let subsHtml = `<div class="row"><b>total found</b><span class="badge">${data.subdomains.length}</span></div><div class="sub-list-wrap">`;
+    data.subdomains.forEach(s => subsHtml += `<div class="row"><span>&gt; ${s}</span></div>`);
+    subsHtml += `</div>`;
+    document.getElementById('subs').innerHTML = subsHtml;
+}
         }
     </script>
 </body>
