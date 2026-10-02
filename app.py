@@ -1,3 +1,4 @@
+import time 
 from flask import Flask, render_template, request, jsonify
 import whois, socket, requests, re
 from flask_limiter import Limiter
@@ -65,19 +66,22 @@ def get_ip_info(domain):
 
 
 def get_subdomains(domain):
-    try:
-        url = f"https://crt.sh/?q=%25.{domain}&output=json"
-        res = requests.get(url, timeout=20)
-        res.raise_for_status()
-        data = res.json()
-        subs = set()
-        for entry in data:
-            for name in entry.get("name_value", "").split("\n"):
-                subs.add(name.strip())
-        return sorted(subs)
-    except Exception as e:
-        return {"error": f"crt.sh lookup failed: {str(e)}"}
-
+    url = f"https://crt.sh/?q=%25.{domain}&output=json"
+    last_error = None
+    for attempt in range(3):
+        try:
+            res = requests.get(url, timeout=45)
+            res.raise_for_status()
+            data = res.json()
+            subs = set()
+            for entry in data:
+                for name in entry.get("name_value", "").split("\n"):
+                    subs.add(name.strip())
+            return sorted(subs)
+        except Exception as e:
+            last_error = str(e)
+            time.sleep(2)
+    return {"error": f"crt.sh lookup failed after 3 attempts: {last_error}"}
 @app.route('/')
 def index():
     return render_template('index.html')
