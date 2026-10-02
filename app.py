@@ -3,7 +3,10 @@ from flask import Flask, render_template, request, jsonify
 import whois, socket, requests, re
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "application/json, text/plain, */*"
+}
 app = Flask(__name__)
 limiter = Limiter(get_remote_address, app=app, default_limits=["30 per hour"])
 
@@ -66,22 +69,34 @@ def get_ip_info(domain):
 
 
 def get_subdomains(domain):
-    url = f"https://crt.sh/?q=%25.{domain}&output=json"
-    last_error = None
-    for attempt in range(3):
-        try:
-            res = requests.get(url, timeout=45)
-            res.raise_for_status()
-            data = res.json()
-            subs = set()
-            for entry in data:
-                for name in entry.get("name_value", "").split("\n"):
-                    subs.add(name.strip())
+    try:
+        url = f"https://crt.sh/?q=%25.{domain}&output=json"
+        res = requests.get(url, timeout=25, headers=HEADERS)
+        res.raise_for_status()
+        data = res.json()
+        subs = set()
+        for entry in data:
+            for name in entry.get("name_value", "").split("\n"):
+                subs.add(name.strip())
+        if subs:
             return sorted(subs)
-        except Exception as e:
-            last_error = str(e)
-            time.sleep(2)
-    return {"error": f"crt.sh lookup failed after 3 attempts: {last_error}"}
+    except Exception:
+        pass
+
+    try:
+        url = f"https://api.certspotter.com/v1/issuances?domain={domain}&include_subdomains=true&expand=dns_names"
+        res = requests.get(url, timeout=25, headers=HEADERS)
+        res.raise_for_status()
+        data = res.json()
+        subs = set()
+        for entry in data:
+            for name in entry.get("dns_names", []):
+                subs.add(name.strip())
+        if subs:
+            return sorted(subs)
+        return {"error": "No subdomains found from any source"}
+    except Exception as e:
+        return {"error": f"Both crt.sh and CertSpotter failed: {str(e)}"}
 @app.route('/')
 def index():
     return render_template('index.html')
